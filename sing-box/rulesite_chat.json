@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "rules": [
+    {
+      "domain_suffix": [
+        "networktest.twilio.com",
+        "twilio.com"
+      ],
+      "domain_keyword": [
+        "networktest",
+        "twilio"
+      ]
+    }
+  ]
+}

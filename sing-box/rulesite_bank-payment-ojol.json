@@ -72,9 +72,6 @@
         "gobiz",
         "gopay-topup",
         "gopay"
-      ],
-      "port": [
-        33303
       ]
     }
   ]

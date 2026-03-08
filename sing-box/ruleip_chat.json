@@ -2,14 +2,6 @@
   "version": 2,
   "rules": [
     {
-      "domain_suffix": [
-        "networktest.twilio.com",
-        "twilio.com"
-      ],
-      "domain_keyword": [
-        "networktest",
-        "twilio"
-      ],
       "port": [
         3478,
         4244,
