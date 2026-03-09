@@ -1,7 +1,0 @@
-payload:
-#
-# STARHUB/IPTV
-#
-  - DOMAIN-SUFFIX,starhubgo.com
-  - DOMAIN-SUFFIX,starhubtvplus.com
-  - DOMAIN-KEYWORD,starhub
