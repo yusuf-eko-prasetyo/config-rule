@@ -1,0 +1,782 @@
+{
+  "log": {
+    "disabled": false,
+    "level": "info",
+    "output": "/var/run/momo/sing-box.log",
+    "timestamp": true
+  },
+  "experimental": {
+    "clash_api": {
+      "external_controller": "0.0.0.0:9090",
+      "secret": "12345678",
+      "external_ui": "/etc/momo/run/ui",
+      "external_ui_download_url": "https://gh-proxy.com/https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip",
+      "external_ui_download_detour": "routing_internet",
+      "default_mode": "rule"
+    },
+    "cache_file": {
+      "enabled": true,
+      "path": "/etc/momo/run/cache.db"
+    }
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "default",
+        "type": "udp",
+        "server": "8.8.8.8",
+        "detour": "direct"
+      },
+      {
+        "tag": "system",
+        "type": "local",
+        "detour": "direct"
+      },
+      {
+        "tag": "google_https",
+        "type": "https",
+        "server": "dns.google",
+        "path": "/dns-query",
+        "detour": "routing_internet"
+      },
+      {
+        "tag": "cloudflare_https",
+        "type": "https",
+        "server": "dns.cloudflare.com",
+        "path": "/dns-query",
+        "detour": "routing_internet"
+      }
+    ],
+    "final": "cloudflare_https",
+    "independent_cache": true
+  },
+  "inbounds": [
+    {
+      "type": "direct",
+      "tag": "dns-in",
+      "listen": "::",
+      "listen_port": 5333
+    },
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "::",
+      "listen_port": 5330,
+      "sniff": true,
+      "sniff_override_destination": true,
+      "set_system_proxy": false
+    },
+    {
+      "type": "redirect",
+      "tag": "redirect-in",
+      "listen": "::",
+      "listen_port": 5331,
+      "sniff": true,
+      "sniff_override_destination": true
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct",
+      "routing_mark": 100
+    },
+    {
+      "type": "trojan",
+      "tag": "server_id",
+      "routing_mark": 100,
+      "server": "100.100.100.100",
+      "server_port": 443,
+      "password": "VAHiCGbKMLxU",
+      "tls": {
+        "enabled": true,
+        "server_name": "id.woewoe.id",
+        "insecure": true
+      },
+      "transport": {
+        "type": "ws",
+        "path": "/trojan",
+        "headers": {
+          "Host": "id.woewoe.id"
+        }
+      }
+    },
+    {
+      "type": "trojan",
+      "tag": "server_sg",
+      "routing_mark": 100,
+      "server": "100.100.100.100",
+      "server_port": 443,
+      "password": "VAHiCGbKMLxU",
+      "tls": {
+        "enabled": true,
+        "server_name": "sg.woewoe.sg",
+        "insecure": true
+      },
+      "transport": {
+        "type": "ws",
+        "path": "/trojan",
+        "headers": {
+          "Host": "sg.woewoe.sg"
+        }
+      }
+    },
+    {
+      "type": "selector",
+      "tag": "routing_id",
+      "outbounds": [
+        "server_id"
+      ],
+      "default": "server_id",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "selector",
+      "tag": "routing_sg",
+      "outbounds": [
+        "server_sg"
+      ],
+      "default": "server_sg",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "urltest",
+      "tag": "routing_internet",
+      "outbounds": [
+        "server_id",
+        "server_sg"
+      ],
+      "url": "http://cp.cloudflare.com/generate_204",
+      "interval": "10s",
+      "interrupt_exist_connections": false
+    }
+  ],
+  "route": {
+    "final": "routing_internet",
+    "auto_detect_interface": true,
+    "find_process": true,
+    "default_domain_resolver": {
+      "action": "resolve",
+      "server": "cloudflare_https"
+    },
+    "rules": [
+      {
+        "inbound": "dns-in",
+        "action": "hijack-dns"
+      },
+      {
+        "rule_set": [
+          "rulesite_bank_payment_ojol"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "rule_set": [
+          "geosite_whatsapp",
+          "geosite_discord",
+          "geosite_line",
+          "geoip_telegram",
+          "geosite_telegram",
+          "ruleip_chat",
+          "rulesite_chat"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "rule_set": [
+          "rulesite_direct"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "rule_set": [
+          "ruleip_dns",
+          "rulesite_dns"
+        ],
+        "action": "route",
+        "outbound": "routing_internet"
+      },
+      {
+        "rule_set": [
+          "ruleip_game",
+          "rulesite_game"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "rule_set": [
+          "rulesite_id",
+          "rulesite_google"
+        ],
+        "action": "route",
+        "outbound": "routing_id"
+      },
+      {
+        "rule_set": [
+          "rulesite_iptv"
+        ],
+        "action": "route",
+        "outbound": "routing_sg"
+      },
+      {
+        "rule_set": [
+          "rulesite_meeting"
+        ],
+        "action": "route",
+        "outbound": "routing_internet"
+      },
+      {
+        "rule_set": [
+          "geosite_microsoft",
+          "rulesite_microsoft"
+        ],
+        "action": "route",
+        "outbound": "routing_sg"
+      },
+      {
+        "rule_set": [
+          "geosite_apple",
+          "geosite_bandcamp",
+          "geosite_spotify",
+          "geosite_soundcloud",
+          "geosite_tidal",
+          "rulesite_music"
+        ],
+        "action": "route",
+        "outbound": "routing_internet"
+      },
+      {
+        "rule_set": [
+          "rulesite_provider"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "rule_set": [
+          "geosite_porn",
+          "geosite_gambling",
+          "rulesite_reject"
+        ],
+        "action": "reject"
+      },
+      {
+        "rule_set": [
+          "geosite_github",
+          "geosite_reddit",
+          "geosite_tracker",
+          "rulesite_sg"
+        ],
+        "action": "route",
+        "outbound": "routing_sg"
+      },
+      {
+        "rule_set": [
+          "rulesite_shoping"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "rule_set": [
+          "geoip_facebook",
+          "geosite_facebook",
+          "geosite_instagram",
+          "geosite_threads",
+          "geoip_twitter",
+          "geosite_twitter",
+          "geosite_tiktok",
+          "rulesite_sosmed"
+        ],
+        "action": "route",
+        "outbound": "routing_internet"
+      },
+      {
+        "rule_set": [
+          "geoip_netflix",
+          "geosite_netflix",
+          "geosite_disney",
+          "geosite_hbo",
+          "geosite_primevideo",
+          "geosite_bilibili",
+          "geosite_hulu",
+          "geosite_iqiyi",
+          "geosite_viu",
+          "geosite_youtube",
+          "geosite_twitch",
+          "rulesite_streaming"
+        ],
+        "action": "route",
+        "outbound": "routing_id"
+      },
+      {
+        "rule_set": [
+          "rulesite_tailscale"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "rule_set": [
+          "rulesite_ticketing"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      }
+    ],
+    "rule_set":[
+      {
+        "type": "remote",
+        "tag": "geosite_whatsapp",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/whatsapp.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_discord",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/discord.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_line",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/line.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip_telegram",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/telegram.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_telegram",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/telegram.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_apple",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/apple.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_bandcamp",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/bandcamp.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_spotify",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/spotify.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_soundcloud",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/soundcloud.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_tidal",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/tidal.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip_facebook",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/facebook.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_facebook",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/facebook.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_instagram",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/instagram.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_threads",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/threads.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip_twitter",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/twitter.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_twitter",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/twitter.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_tiktok",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/tiktok.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_github",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/github.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_reddit",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/reddit.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_tracker",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/tracker.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip_netflix",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/netflix.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_netflix",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/netflix.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_disney",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/disney.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_hbo",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/hbo.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_primevideo",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/primevideo.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_bilibili",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/bilibili.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_hulu",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/hulu.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_iqiyi",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/iqiyi.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_viu",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/viu.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_youtube",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/youtube.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_twitch",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/twitch.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_microsoft",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/microsoft.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_porn",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/category-porn.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite_gambling",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/rentry00/sing-box-geosite3/refs/heads/main/rule/hagezi-gambling.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_bank_payment_ojol",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_bank-payment-ojol.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "ruleip_chat",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/ruleip_chat.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_chat",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_chat.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_direct",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_direct.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "ruleip_dns",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/ruleip_dns.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_dns",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_dns.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "ruleip_game",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/ruleip_game.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_game",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_game.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_google",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_google.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_id",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_id.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_iptv",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_iptv.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_meeting",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_meeting.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_microsoft",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_microsoft.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_music",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_music.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_provider",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_provider.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_reject",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_reject.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_sg",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_sg.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_shoping",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_shoping.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_sosmed",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_sosmed.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_streaming",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_streaming.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_tailscale",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_tailscale.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      },
+      {
+        "type": "remote",
+        "tag": "rulesite_ticketing",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/yusuf-eko-prasetyo/config-rule/refs/heads/main/sing-box/rulesite_ticketing.srs",
+        "download_detour": "routing_internet",
+        "update_interval": "1d"
+      }
+    ]
+  }
+}
